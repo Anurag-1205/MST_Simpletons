@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
   library(car)
 })
 
-BASE   <- "/home/anurag/Documents/BRSM/MST_experiment/"
+BASE   <- "/home/anurag/Documents/BRSM/MST_Simpletons"
 DATA   <- file.path(BASE, "extracted_data")
 PLOTS  <- file.path(BASE, "report1_plots")
 dir.create(PLOTS, showWarnings = FALSE)
