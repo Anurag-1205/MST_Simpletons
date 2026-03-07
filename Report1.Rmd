@@ -20,6 +20,10 @@ header-includes:
   - \captionsetup{font=small}
   - \usepackage{setspace}
   - \singlespacing
+  - \usepackage{enumitem}
+  - \setlist{nosep, leftmargin=*}
+  - \usepackage{hyperref}
+  - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
 
 ---
 
@@ -39,114 +43,64 @@ suppressPackageStartupMessages({
   library(gridExtra)
 })
 
-# ── Load extracted data ──
 DATA <- file.path(normalizePath("."), "extracted_data")
 retrieval <- read_csv(file.path(DATA, "retrieval_trials.csv"), show_col_types = FALSE)
 metrics   <- read_csv(file.path(DATA, "participant_metrics.csv"), show_col_types = FALSE)
 lure_bins <- read_csv(file.path(DATA, "lure_bin_metrics.csv"), show_col_types = FALSE)
 enc_rt    <- read_csv(file.path(DATA, "encoding_rt_summary.csv"), show_col_types = FALSE)
 
-# ── Factor levels ──
 metrics$boundary_position <- factor(metrics$boundary_position, levels = c("pre","mid","post"))
 metrics$group <- factor(metrics$group, levels = c("item_only","task_only","Both_item_task"))
 retrieval$boundary_position <- factor(retrieval$boundary_position, levels = c("pre","mid","post","none"))
 retrieval$group <- factor(retrieval$group, levels = c("item_only","task_only","Both_item_task"))
 lure_bins$group <- factor(lure_bins$group, levels = c("item_only","task_only","Both_item_task"))
 
-# ── Common ggplot theme ──
-theme_report <- theme_minimal(base_size = 11) +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
-        plot.subtitle = element_text(hjust = 0.5, colour = "grey40", size = 10),
+theme_report <- theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 11),
+        plot.subtitle = element_text(hjust = 0.5, colour = "grey40", size = 9),
         legend.position = "bottom",
-        strip.text = element_text(face = "bold"))
+        strip.text = element_text(face = "bold"),
+        plot.margin = margin(2, 4, 2, 4))
 ```
 
 # Introduction
 
-Human experience does not unfold as a single continuous stream. Instead, the brain automatically partitions ongoing activity into discrete units known as *events*. This phenomenon, termed **event segmentation**, is a fundamental organizing principle of human cognition (Zacks, Speer, Swallow, Braver, & Reynolds, 2007). An **event boundary** occurs whenever the perceptual or situational context changes — for instance, when a person walks from one room to another, or when the scene shifts in a film. These boundaries are not merely incidental; they play a critical role in determining what is encoded into memory and with what fidelity.
+Human experience is not a continuous stream — the brain automatically segments ongoing activity into discrete *events*. An **event boundary** occurs whenever the perceptual or situational context changes, such as moving between rooms or a scene change in a film (Zacks, Speer, Swallow, Braver, & Reynolds, 2007). These boundaries critically determine what is encoded into memory. Two complementary effects have been documented. The **Blind Spot effect**: items immediately *after* a boundary are remembered less accurately, because the cognitive system is occupied updating its internal event model (Swallow, Zacks, & Abrams, 2009; DuBrow & Davachi, 2014). The **Snapshot effect**: items immediately *before* a boundary may be encoded with enhanced fidelity, as the impending context shift signals the brain to stabilise the current representation (Heusser, Ezzyat, Shiff, & Davachi, 2018).
 
-Research over the past two decades has identified two complementary effects of event boundaries on memory. The first is the **Blind Spot effect**: items appearing immediately after a boundary tend to be remembered less accurately, because the cognitive system is occupied updating its internal event model and reallocating attentional resources to the new context (Swallow, Zacks, & Abrams, 2009; DuBrow & Davachi, 2014). As a result, the first item in a new event receives comparatively shallow encoding. The second is the **Snapshot effect**: items appearing immediately before a boundary may be encoded with enhanced detail, as if the impending transition signals the brain to stabilize and "stamp in" the current representation with higher fidelity (Heusser, Ezzyat, Shiff, & Davachi, 2018).
+The **Mnemonic Similarity Task** (MST; Stark, Yassa, Lacy, & Stark, 2013; Stark, Kirwan, & Stark, 2019) is ideally suited to investigate these effects. During encoding, participants study object images; during test, they classify each image as "Old" (target), "Similar" (lure), or "New" (foil). The MST yields two orthogonal metrics: **Recognition Memory (REC)**, capturing old/new discrimination, and the **Lure Discrimination Index (LDI)**, capturing hippocampal pattern separation ability. Following Morse, Duff, Abel, and Johnson (2023), we embedded event boundaries into the encoding sequence by interleaving scene-change images between blocks of objects. A total of **159 participants** were tested across three groups varying in encoding task complexity: **Item Only** (*n* = 56), **Task Only** (*n* = 53), and **Both Item & Task** (*n* = 50–52). Items at Position 1 (post-boundary), Position 4 (mid-event baseline), and Position 7 (pre-boundary) within each block were compared. Three directional hypotheses were tested:
 
-The **Mnemonic Similarity Task** (MST), developed by Stark, Yassa, Lacy, and Stark (2013) and refined by Stark, Kirwan, and Stark (2019), provides an ideal paradigm for investigating these boundary effects. During an encoding phase, participants study a series of object images. During a subsequent test phase, they classify each image as "Old" (a studied target), "Similar" (a visually similar lure), or "New" (a never-seen foil). The MST yields two orthogonal memory metrics: **Recognition Memory (REC)**, which captures general old/new discrimination, and the **Lure Discrimination Index (LDI)**, which captures the ability to distinguish similar lures from exact repetitions — a process linked to hippocampal pattern separation.
-
-Following the paradigm of Morse, Duff, Abel, and Johnson (2023), the present study embedded event boundaries into the MST encoding sequence. A total of **159 participants** were tested across three experimental groups: **Item Only** (*n* = 56; simple viewing with indoor/outdoor judgement), **Task Only** (*n* = 53; a categorization task on each image), and **Both Item & Task** (*n* = 50–52; both tasks simultaneously). During encoding, images were presented in 40 blocks of 7 items each, with a perceptual scene change and task shift at each block transition serving as the event boundary. Items were classified by their position within the block: **pre-boundary** (Position 7, the last item before a change), **mid-event** (Position 4, the baseline, maximally distant from any boundary), and **post-boundary** (Position 1, the first item after a change).
-
-Two bias-corrected memory indices were computed for each participant at each boundary position. REC = $P(\text{``Old''} | \text{Target}) - P(\text{``Old''} | \text{Foil})$ captures recognition accuracy, while LDI = $P(\text{``Similar''} | \text{Lure}) - P(\text{``Similar''} | \text{Foil})$ captures pattern separation ability. Subtracting the foil false-alarm rate removes individual differences in response tendency. Three directional hypotheses were tested:
-
-- **Hypothesis 1 (Blind Spot):** Post-boundary items will show lower REC than mid-event items.
-- **Hypothesis 2 (Snapshot):** Pre-boundary items will show higher LDI than mid-event items.
-- **Hypothesis 3 (Speed Bump):** Post-boundary items will elicit slower retrieval reaction times (RT) than mid-event items.
-
-Because all three hypotheses predict a specific direction, they were evaluated with one-tailed statistical tests.
-
-\newpage
+- **H1 — Blind Spot:** Post-boundary items show lower REC than mid-event items.
+- **H2 — Snapshot:** Pre-boundary items show higher LDI than mid-event items.
+- **H3 — Speed Bump:** Post-boundary items elicit slower retrieval RT than mid-event items.
 
 # Methods
 
 ## Experimental Design
 
-### Participants and Groups
-
-The sample comprised 159 participants assigned to one of three experimental groups based on the task performed during the encoding phase. The **Item Only** group (*n* = 56) simply viewed each object image and indicated whether it depicted an indoor or outdoor item. The **Task Only** group (*n* = 53) performed a categorization task on each image (e.g., "Does it fit in a shoebox?"). The **Both Item & Task** group (*n* = 50–52) performed both the viewing judgement and the categorization task simultaneously. This between-groups manipulation enabled investigation of whether encoding complexity modulates boundary effects on memory.
-
-### Encoding Phase
-
-During the encoding phase, participants viewed a total of 280 object images arranged in 40 blocks of 7 items each. The transition between consecutive blocks constituted an event boundary, marked by both a perceptual change (an indoor or outdoor scene image separating the object sequences) and a task shift. Items within each block were categorized relative to the boundary: Position 1 was designated **post-boundary** (the first item immediately after a scene change), Position 4 was designated **mid-event** (the item maximally distant from either boundary, serving as the within-event baseline), and Position 7 was designated **pre-boundary** (the final item before the next scene change).
-
-### Test Phase
-
-Following encoding, participants completed a memory test consisting of 150 images. These comprised targets (exact repetitions of studied objects), lures (visually similar but non-identical versions of studied objects), and foils (entirely novel objects never presented during encoding). For each image, participants responded with "Old" (previously seen), "Similar" (resembling a seen object), or "New" (never seen). Lures were further organized into five similarity bins — Bin 1 containing the most similar lures (hardest to discriminate from the original) and Bin 5 containing the least similar (easiest to discriminate) — providing a graded measure of discrimination difficulty.
+The sample comprised 159 participants assigned to one of three groups based on the encoding task performed. The **Item Only** group (*n* = 56) indicated whether each object was indoor/outdoor. The **Task Only** group (*n* = 53) performed a categorisation task (e.g., "Does it fit in a shoebox?"). The **Both Item & Task** group (*n* = 50–52) performed both tasks simultaneously. During encoding, participants viewed 280 object images in 40 blocks of 7 items, with a scene change and task shift at each block transition serving as the event boundary. Items were classified by position: **post-boundary** (Position 1), **mid-event** (Position 4, baseline), and **pre-boundary** (Position 7). During the subsequent test phase, participants classified 150 images — targets, lures (across five similarity bins, Bin 1 = most similar), and foils — as "Old", "Similar", or "New".
 
 ## Variables Computed
 
-### Memory Metrics
+Two bias-corrected memory indices were computed per participant at each boundary position:
 
-Two primary outcome measures were calculated for each participant at each boundary position:
-
-**Recognition Memory Index (REC).** REC quantifies general recognition ability — the capacity to discriminate studied items from novel foils. It is defined as:
 $$\text{REC} = P(\text{``Old''} \mid \text{Target}) - P(\text{``Old''} \mid \text{Foil})$$
-Higher values indicate better recognition memory. Subtracting the foil false-alarm rate corrects for individual response bias.
-
-**Lure Discrimination Index (LDI).** LDI quantifies pattern separation ability — the capacity to distinguish a visually similar lure from an exact repetition. It is defined as:
 $$\text{LDI} = P(\text{``Similar''} \mid \text{Lure}) - P(\text{``Similar''} \mid \text{Foil})$$
-Higher values indicate a finer-grained memory representation that enables the participant to detect subtle perceptual differences.
 
-### Why Bias Correction Is Necessary
-
-Raw hit rates alone can be misleading. A participant who responds "Old" to every item will achieve a perfect target hit rate but will have no genuine discriminative ability. By subtracting the false-alarm rate — the proportion of foils incorrectly endorsed — we obtain a measure that reflects true memory rather than response tendency.
+REC captures recognition accuracy; LDI captures pattern separation ability. Subtracting the foil false-alarm rate corrects for individual response bias — a participant who responds "Old" to everything achieves a high hit rate but zero genuine discrimination. This subtraction ensures that both metrics reflect true memory rather than response tendency. Retrieval reaction time (RT) was also recorded for each test trial.
 
 ## Statistical Analysis
 
-### Descriptive Statistics and Visualisations
+**Descriptive statistics.** Means, standard deviations, medians, and interquartile ranges were computed for REC and LDI at each boundary position within each group. Distributions were visualised with violin plots overlaid with box plots and group means. Line plots with $\pm$1 SE error bars illustrated positional trends. A lure bin accuracy curve — $P(\text{``Similar''} \mid \text{Lure})$ across five similarity bins — validated the MST: a monotonically increasing curve from Bin 1 to Bin 5 confirms genuine pattern separation.
 
-Means, standard deviations, medians, and interquartile ranges were computed for REC and LDI at each boundary position within each group using the `psych` package in R (Revelle, 2023). Distributions were visualised using **violin plots** overlaid with box plots and group-mean points. **Line plots** with $\pm$1 standard error bars illustrated positional trends across groups for both REC and LDI. A **lure bin accuracy curve** — plotting $P(\text{``Similar''} \mid \text{Lure})$ across five similarity bins — served as a validation check: a monotonically increasing curve from Bin 1 to Bin 5 confirms that the MST is measuring genuine pattern separation.
+**Normality assessment.** Before applying parametric tests, normality was assessed in each of the nine group $\times$ position cells using the Shapiro–Wilk test ($p < 0.05$ indicates departure) and QQ plots. Where departures were found, non-parametric alternatives were run in parallel.
 
-### Normality Checks
+**Inferential tests.** The primary tests were **paired-samples $t$-tests** — appropriate because boundary position is a within-subject manipulation, with each participant contributing data at all three positions. This design uses participants as their own controls, reducing between-subject variability and increasing power. **Wilcoxon signed-rank tests** were conducted in parallel as non-parametric alternatives. All three hypotheses predict a specific direction and were therefore evaluated with **one-tailed tests**. Effect sizes were quantified using **Cohen's $d$** for paired samples ($d = 0.2$: small, $0.5$: medium, $0.8$: large). The specific directional comparisons were:
 
-Before applying parametric tests, normality was assessed in each of the nine group $\times$ position cells using the **Shapiro–Wilk test** ($p < 0.05$ indicates significant departure from normality) and **QQ plots** (visual diagnostic in which deviations from the diagonal reference line indicate non-normality). Where departures were found, non-parametric alternatives were run in parallel to verify robustness.
+- **Blind Spot:** $\text{REC}_{\text{post}} < \text{REC}_{\text{mid}}$
+- **Snapshot:** $\text{LDI}_{\text{pre}} > \text{LDI}_{\text{mid}}$
+- **Speed Bump:** $\text{RT}_{\text{post}} > \text{RT}_{\text{mid}}$
 
-### Inferential Tests
-
-The primary inferential tests were **paired-samples $t$-tests**, a within-subjects design in which each participant's score at one boundary position is compared directly to their own score at another position. This is the appropriate test because boundary position is a within-subject manipulation: every participant contributes data at pre-boundary, mid-event, and post-boundary positions. Using participants as their own controls reduces between-subject variability and increases statistical power. **Wilcoxon signed-rank tests** were conducted in parallel as non-parametric alternatives that do not assume normality.
-
-The specific directional (one-tailed) comparisons were:
-
-- **Blind Spot:** $\text{REC}_{\text{post}} < \text{REC}_{\text{mid}}$ (expecting impairment after the boundary).
-- **Snapshot:** $\text{LDI}_{\text{pre}} > \text{LDI}_{\text{mid}}$ (expecting enhancement before the boundary).
-- **Speed Bump:** $\text{RT}_{\text{post}} > \text{RT}_{\text{mid}}$ (expecting slowing after the boundary).
-
-Effect sizes were quantified using **Cohen's $d$** for paired samples, with conventional benchmarks of 0.2 (small), 0.5 (medium), and 0.8 (large).
-
-### Correction for Multiple Comparisons
-
-Running multiple statistical tests across three groups and three hypotheses inflates the probability of a Type I error (false positive). Two correction methods were applied to all reported $p$-values:
-
-- **Bonferroni correction:** Multiplies each raw $p$-value by the total number of tests ($k$). This is a highly conservative method that strictly controls the family-wise error rate — the probability of making at least one false positive across all tests — below the chosen $\alpha$ level of 0.05.
-- **Benjamini–Hochberg (BH) correction:** Controls the **False Discovery Rate** (the expected proportion of false positives among all rejected hypotheses). It is less conservative than Bonferroni and provides a better balance between sensitivity and specificity.
-
-Throughout the Results section, raw $p$-values are reported alongside both corrected values, and final hypothesis verdicts rely on the corrected values.
-
-\newpage
+**Multiple comparison correction.** Running multiple tests inflates the probability of Type I error. Two correction methods were applied: **Bonferroni** (multiplies each $p$-value by the number of tests $k$; controls the family-wise error rate conservatively) and **Benjamini–Hochberg** (controls the false discovery rate; less conservative, better suited for exploratory analyses). Both corrected $p$-values are reported alongside raw values throughout the Results.
 
 # Results
 
@@ -170,94 +124,85 @@ kable(overall[, c("Group","n","REC Mean","REC SD","LDI Mean","LDI SD")],
       booktabs = TRUE, align = "lccccc")
 ```
 
-All three groups exhibited positive REC and LDI values (Table 1), confirming that participants could both recognise studied items and discriminate similar lures — the MST functioned as intended. The Item Only group demonstrated the highest mean REC, while the Task Only group exhibited the lowest, suggesting that the type of encoding task affects overall recognition quality. LDI values were broadly comparable across groups, indicating similar levels of pattern separation ability regardless of encoding condition.
-
-```{r position-stats}
-pos_stats <- metrics %>%
-  group_by(group, boundary_position) %>%
-  summarise(
-    `REC Mean` = round(mean(REC, na.rm = TRUE), 3),
-    `REC SD`   = round(sd(REC, na.rm = TRUE), 3),
-    `LDI Mean` = round(mean(LDI, na.rm = TRUE), 3),
-    `LDI SD`   = round(sd(LDI, na.rm = TRUE), 3),
-    .groups = "drop"
-  ) %>%
-  mutate(Group = case_when(
-    group == "item_only" ~ "Item Only",
-    group == "task_only" ~ "Task Only",
-    TRUE ~ "Both"
-  ))
-
-kable(pos_stats[, c("Group","boundary_position","REC Mean","REC SD","LDI Mean","LDI SD")],
-      col.names = c("Group", "Position", "REC Mean", "REC SD", "LDI Mean", "LDI SD"),
-      caption = "REC and LDI by boundary position and group.",
-      booktabs = TRUE, align = "llcccc")
-```
-
-Inspecting Table 2 by boundary position reveals that in the Both Item & Task group, post-boundary REC is notably lower than mid-event REC, a pattern consistent with the Blind Spot prediction. No analogous positional pattern is visible for LDI in any group.
+All three groups exhibited positive REC and LDI (Table 1), confirming that participants could recognise studied items and discriminate lures. The Item Only group demonstrated the highest mean REC, while the Task Only group exhibited the lowest, suggesting encoding task type affects recognition quality. LDI values were comparable across groups.
 
 ## Visualisations
 
-```{r fig-rec, fig.cap="REC by boundary position. Violin plots show distributions; red diamonds mark group means. A clear post-boundary drop is visible in the Both group.", fig.height=3.8, fig.width=9}
-ggplot(metrics, aes(x = boundary_position, y = REC, fill = boundary_position)) +
+```{r fig-main, fig.cap="(A) REC by boundary position — violin plots with box plots and group means (red diamonds). A clear post-boundary drop is visible in the Both group. (B) Mean REC and LDI by position and group with ±1 SE error bars. The Both group shows a clear mid-to-post REC decline; LDI is flat across positions.", fig.height=5.5, fig.width=10}
+# Panel A: REC violin
+p_violin <- ggplot(metrics, aes(x = boundary_position, y = REC, fill = boundary_position)) +
   geom_violin(alpha = 0.35, width = 0.8) +
-  geom_boxplot(width = 0.15, outlier.shape = 21, outlier.size = 1) +
-  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, colour = "red") +
+  geom_boxplot(width = 0.15, outlier.shape = 21, outlier.size = 0.8) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 2.5, colour = "red") +
   facet_wrap(~group, labeller = labeller(group = c(
     item_only = "Item Only", task_only = "Task Only",
     Both_item_task = "Both Item & Task"))) +
   scale_fill_brewer(palette = "Set2") +
-  labs(x = "Boundary Position", y = "REC") +
+  labs(title = "(A) REC Distribution by Boundary Position", x = "Position", y = "REC") +
   theme_report + theme(legend.position = "none")
-```
 
-Figure 1 displays the full distribution of REC at each boundary position. In the Both Item & Task panel, the post-boundary violin and box are shifted downward relative to mid-event, with the mean (red diamond) sitting noticeably lower. The Item Only and Task Only groups show a subtler downward trend at post-boundary. The wide violin shapes reflect substantial individual differences in how boundaries affect memory.
-
-```{r fig-line, fig.cap="Mean REC (left) and LDI (right) by position and group. Error bars show ±1 SE. The Both group shows a clear mid-to-post REC decline.", fig.height=3.5, fig.width=10}
+# Panel B: Line plots
 pos_summary <- metrics %>%
   group_by(group, boundary_position) %>%
   summarise(
     REC_mean = mean(REC, na.rm = TRUE), REC_se = sd(REC, na.rm = TRUE)/sqrt(n()),
     LDI_mean = mean(LDI, na.rm = TRUE), LDI_se = sd(LDI, na.rm = TRUE)/sqrt(n()),
-    .groups = "drop"
-  )
+    .groups = "drop")
 
-p_rec <- ggplot(pos_summary, aes(x = boundary_position, y = REC_mean, colour = group, group = group)) +
-  geom_line(linewidth = 0.9) + geom_point(size = 2.5) +
+clr <- c("Both_item_task"="#1b9e77","item_only"="#d95f02","task_only"="#7570b3")
+lbl <- c("Both","Item Only","Task Only")
+
+p_rec_line <- ggplot(pos_summary, aes(x = boundary_position, y = REC_mean, colour = group, group = group)) +
+  geom_line(linewidth = 0.8) + geom_point(size = 2) +
   geom_errorbar(aes(ymin = REC_mean - REC_se, ymax = REC_mean + REC_se), width = 0.1) +
-  scale_colour_manual(values = c("Both_item_task"="#1b9e77","item_only"="#d95f02","task_only"="#7570b3"),
-                      labels = c("Both","Item Only","Task Only")) +
-  labs(title = "REC", x = "Position", y = "Mean REC", colour = "Group") + theme_report
+  scale_colour_manual(values = clr, labels = lbl) +
+  labs(title = "(B) Mean REC", x = "Position", y = "Mean REC", colour = "Group") +
+  theme_report + theme(legend.key.size = unit(0.4, "cm"))
 
-p_ldi <- ggplot(pos_summary, aes(x = boundary_position, y = LDI_mean, colour = group, group = group)) +
-  geom_line(linewidth = 0.9) + geom_point(size = 2.5) +
+p_ldi_line <- ggplot(pos_summary, aes(x = boundary_position, y = LDI_mean, colour = group, group = group)) +
+  geom_line(linewidth = 0.8) + geom_point(size = 2) +
   geom_errorbar(aes(ymin = LDI_mean - LDI_se, ymax = LDI_mean + LDI_se), width = 0.1) +
-  scale_colour_manual(values = c("Both_item_task"="#1b9e77","item_only"="#d95f02","task_only"="#7570b3"),
-                      labels = c("Both","Item Only","Task Only")) +
-  labs(title = "LDI", x = "Position", y = "Mean LDI", colour = "Group") + theme_report
+  scale_colour_manual(values = clr, labels = lbl) +
+  labs(title = "(B) Mean LDI", x = "Position", y = "Mean LDI", colour = "Group") +
+  theme_report + theme(legend.key.size = unit(0.4, "cm"))
 
-grid.arrange(p_rec, p_ldi, ncol = 2)
+grid.arrange(p_violin, arrangeGrob(p_rec_line, p_ldi_line, ncol = 2), nrow = 2, heights = c(1, 0.85))
 ```
 
-Figure 2 makes the group trends easier to compare. In the left panel (REC), the Both group shows a clear decline from mid-event to post-boundary; the other two groups show a subtler dip. In the right panel (LDI), all three lines are relatively flat across positions, confirming the absence of a Snapshot effect at the descriptive level. When error bars of two points overlap substantially, the difference is unlikely to be significant — note that for the Both group's REC, the post-boundary error bar barely overlaps with the mid-event error bar, consistent with the significant effect reported below.
+Figure 1A displays the full REC distributions. In the Both Item & Task panel, the post-boundary violin and box are shifted downward relative to mid-event, with the mean (red diamond) sitting noticeably lower. The Item Only and Task Only groups show a subtler downward trend. Figure 1B makes the group trends easier to compare: the Both group shows a clear decline from mid-event to post-boundary for REC, while all three LDI lines are flat across positions, indicating no Snapshot effect at the descriptive level.
 
-```{r fig-lurebin, fig.cap="Lure bin accuracy curve. All groups show the expected monotonic increase from Bin 1 (hardest) to Bin 5 (easiest), validating the MST.", fig.height=3.5, fig.width=7}
+```{r fig-lurebin-rt, fig.cap="(A) Lure bin accuracy curve — all groups show the expected monotonic increase from Bin 1 (most similar, hardest) to Bin 5 (least similar, easiest), validating the MST. (B) Retrieval RT by boundary position — no systematic post-boundary slowing is observed.", fig.height=3.2, fig.width=10}
+# Panel A: Lure bin curve
 lure_bin_summary <- lure_bins %>%
   group_by(group, lure_bin) %>%
   summarise(mean_p = mean(p_similar, na.rm = TRUE),
             se_p = sd(p_similar, na.rm = TRUE)/sqrt(n()), .groups = "drop")
 
-ggplot(lure_bin_summary, aes(x = factor(lure_bin), y = mean_p, colour = group, group = group)) +
-  geom_line(linewidth = 1) + geom_point(size = 3) +
-  geom_errorbar(aes(ymin = mean_p - se_p, ymax = mean_p + se_p), width = 0.12) +
-  scale_colour_manual(values = c("Both_item_task"="#1b9e77","item_only"="#d95f02","task_only"="#7570b3"),
-                      labels = c("Both","Item Only","Task Only")) +
-  labs(x = "Lure Bin (1 = most similar, 5 = least similar)",
-       y = "P('Similar' | Lure)", colour = "Group") +
-  theme_report
+p_lure <- ggplot(lure_bin_summary, aes(x = factor(lure_bin), y = mean_p, colour = group, group = group)) +
+  geom_line(linewidth = 0.9) + geom_point(size = 2.5) +
+  geom_errorbar(aes(ymin = mean_p - se_p, ymax = mean_p + se_p), width = 0.1) +
+  scale_colour_manual(values = clr, labels = lbl) +
+  labs(title = "(A) Lure Bin Accuracy Curve", x = "Lure Bin (1=most similar)", y = "P('Similar'|Lure)", colour = "Group") +
+  theme_report + theme(legend.key.size = unit(0.4, "cm"))
+
+# Panel B: RT speed bump
+rt_line_data <- retrieval %>%
+  filter(stimulus_type %in% c("Target","Lure"),
+         boundary_position %in% c("pre","mid","post"), !is.na(rt)) %>%
+  group_by(group, boundary_position) %>%
+  summarise(mean_rt = mean(rt), se_rt = sd(rt)/sqrt(n()), .groups = "drop")
+
+p_rt <- ggplot(rt_line_data, aes(x = boundary_position, y = mean_rt, colour = group, group = group)) +
+  geom_line(linewidth = 0.9) + geom_point(size = 2.5) +
+  geom_errorbar(aes(ymin = mean_rt - se_rt, ymax = mean_rt + se_rt), width = 0.1) +
+  scale_colour_manual(values = clr, labels = lbl) +
+  labs(title = "(B) Retrieval RT by Position", x = "Position", y = "Mean RT (s)", colour = "Group") +
+  theme_report + theme(legend.key.size = unit(0.4, "cm"))
+
+grid.arrange(p_lure, p_rt, ncol = 2)
 ```
 
-Figure 3 presents the lure bin accuracy curve — a critical validation check for the MST. All three groups exhibit the expected monotonically increasing pattern from Bin 1 (most similar lures, hardest to discriminate) to Bin 5 (least similar, easiest to discriminate). The largely overlapping curves across groups confirm that the type of encoding task does not drastically alter overall pattern separation ability. This result verifies that participants engaged genuinely with the task and that the MST is measuring the intended construct.
+Figure 2A presents the lure bin accuracy curve — a critical MST validation. All three groups exhibit the expected monotonically increasing pattern, confirming participants engaged genuinely with the task and that the MST measured pattern separation. The overlapping curves show that encoding task type does not alter overall discrimination ability. Figure 2B shows mean retrieval RT by boundary position; no group exhibits systematic post-boundary slowing, previewing the null result for H3.
 
 ## Normality Assessment
 
@@ -279,19 +224,16 @@ shapiro_all <- metrics %>%
 
 kable(shapiro_all[, c("Group","boundary_position","REC W","REC p","LDI W","LDI p")],
       col.names = c("Group","Position","REC W","REC p","LDI W","LDI p"),
-      caption = "Shapiro--Wilk normality tests. $p < 0.05$ indicates departure from normality.",
+      caption = "Shapiro--Wilk normality tests by group and position.",
       booktabs = TRUE, align = "llcccc")
 ```
 
-LDI did not significantly depart from normality in any of the nine group $\times$ position cells (all $p > 0.05$), confirming that parametric tests are fully appropriate for LDI analyses. REC showed significant departures in 5 of 9 cells, primarily driven by extreme scores in the tails. However, because parametric ($t$-test) and non-parametric (Wilcoxon) tests yielded identical conclusions throughout the analysis, the findings are robust to this violation.
+LDI did not depart from normality in any cell (all $p > 0.05$). REC showed significant departures in 5 of 9 cells, driven by extreme tail scores. However, parametric and non-parametric tests yielded identical conclusions throughout, confirming robustness to this violation.
 
 ## Inferential Statistics
 
-### Blind Spot Effect: REC Post-Boundary vs. Mid-Event
-
-To test whether post-boundary items were remembered more poorly, we conducted paired $t$-tests comparing each participant's post-boundary REC to their mid-event REC within each group.
-
-```{r blind-spot-test}
+```{r all-hypothesis-tests}
+# --- H1: Blind Spot (REC post < mid) ---
 rec_wide <- metrics %>%
   select(participant, group, boundary_position, REC) %>%
   pivot_wider(names_from = boundary_position, values_from = REC, names_prefix = "REC_")
@@ -303,33 +245,18 @@ for (g in levels(metrics$group)) {
   cd <- cohens_d(d$REC_post, d$REC_mid, paired = TRUE, alternative = "less")
   wt <- wilcox.test(d$REC_post, d$REC_mid, paired = TRUE, alternative = "less")
   rec_tests[[g]] <- data.frame(
-    Group = case_when(g == "item_only" ~ "Item Only",
-                      g == "task_only" ~ "Task Only", TRUE ~ "Both"),
+    Hypothesis = "H1: Blind Spot",
+    Group = case_when(g == "item_only" ~ "Item Only", g == "task_only" ~ "Task Only", TRUE ~ "Both"),
+    Metric = "REC (post-mid)",
     `Mean Diff` = round(mean(d$REC_post - d$REC_mid), 3),
     t = round(tt$statistic, 3), df = tt$parameter,
-    `p (raw)` = round(tt$p.value, 5),
+    `p (raw)` = tt$p.value,
     `Cohen d` = round(cd$Cohens_d, 3),
-    `Wilcoxon p` = round(wt$p.value, 5),
-    check.names = FALSE
-  )
+    `Wilcoxon p` = wt$p.value,
+    check.names = FALSE)
 }
-rec_res <- bind_rows(rec_tests)
-rec_res$`p (Bonf.)` <- round(p.adjust(rec_res$`p (raw)`, "bonferroni"), 5)
-rec_res$`p (BH)` <- round(p.adjust(rec_res$`p (raw)`, "BH"), 5)
 
-kable(rec_res, caption = "Blind Spot: Paired $t$-tests for REC (post $-$ mid). Negative values indicate impairment.",
-      booktabs = TRUE, align = "lcccccccc", row.names = FALSE)
-```
-
-Recognition memory was significantly lower for post-boundary items compared to mid-event items in the **Both Item & Task** group ($t(50) = -4.12$, raw $p < .001$, Cohen's $d = -0.58$). This represents a 12-percentage-point impairment — a medium-sized effect that **survived both Bonferroni and BH corrections**. The Item Only (raw $p = .034$) and Task Only (raw $p = .039$) groups showed nominally significant trends in the same direction, but these did not survive correction for multiple comparisons. The Wilcoxon tests corroborated the parametric results in all cases.
-
-> **Hypothesis 1 Verdict:** **Supported in the Both Item & Task group** ($p < .001$, $d = -0.58$, robust to correction). **Not supported** in the Item Only and Task Only groups — while raw $p$-values reached nominal significance, they failed to survive multiple-comparison corrections.
-
-### Snapshot Effect: LDI Pre-Boundary vs. Mid-Event
-
-To test whether pre-boundary items were remembered with enhanced detail, we compared pre-boundary LDI to mid-event LDI.
-
-```{r snapshot-test}
+# --- H2: Snapshot (LDI pre > mid) ---
 ldi_wide <- metrics %>%
   select(participant, group, boundary_position, LDI) %>%
   pivot_wider(names_from = boundary_position, values_from = LDI, names_prefix = "LDI_")
@@ -341,33 +268,18 @@ for (g in levels(metrics$group)) {
   cd <- cohens_d(d$LDI_pre, d$LDI_mid, paired = TRUE, alternative = "greater")
   wt <- wilcox.test(d$LDI_pre, d$LDI_mid, paired = TRUE, alternative = "greater")
   ldi_tests[[g]] <- data.frame(
-    Group = case_when(g == "item_only" ~ "Item Only",
-                      g == "task_only" ~ "Task Only", TRUE ~ "Both"),
+    Hypothesis = "H2: Snapshot",
+    Group = case_when(g == "item_only" ~ "Item Only", g == "task_only" ~ "Task Only", TRUE ~ "Both"),
+    Metric = "LDI (pre-mid)",
     `Mean Diff` = round(mean(d$LDI_pre - d$LDI_mid), 3),
     t = round(tt$statistic, 3), df = tt$parameter,
-    `p (raw)` = round(tt$p.value, 5),
+    `p (raw)` = tt$p.value,
     `Cohen d` = round(cd$Cohens_d, 3),
-    `Wilcoxon p` = round(wt$p.value, 5),
-    check.names = FALSE
-  )
+    `Wilcoxon p` = wt$p.value,
+    check.names = FALSE)
 }
-ldi_res <- bind_rows(ldi_tests)
-ldi_res$`p (Bonf.)` <- round(p.adjust(ldi_res$`p (raw)`, "bonferroni"), 5)
-ldi_res$`p (BH)` <- round(p.adjust(ldi_res$`p (raw)`, "BH"), 5)
 
-kable(ldi_res, caption = "Snapshot: Paired $t$-tests for LDI (pre $-$ mid). Positive values would indicate enhancement.",
-      booktabs = TRUE, align = "lcccccccc", row.names = FALSE)
-```
-
-No group showed a significant difference in LDI between pre-boundary and mid-event positions (all $p > .30$, all $d < 0.15$). The mean differences were negligible, and effect sizes were near zero. Pre-boundary items did not exhibit enhanced lure discrimination compared to mid-event items.
-
-> **Hypothesis 2 Verdict:** **Not supported in any group.** We fail to reject the null hypothesis. The Snapshot effect was not detected, likely because the boundaries were unpredictable and LDI estimates were based on relatively few lure trials per position per participant (9–11 trials).
-
-### Speed Bump Effect: Retrieval RT Post-Boundary vs. Mid-Event
-
-We tested whether post-boundary items elicited slower retrieval responses by comparing per-participant mean retrieval RT for post-boundary vs. mid-event items.
-
-```{r speed-bump}
+# --- H3: Speed Bump (RT post > mid) ---
 rt_by_pos <- retrieval %>%
   filter(stimulus_type %in% c("Target","Lure"),
          boundary_position %in% c("pre","mid","post"), !is.na(rt)) %>%
@@ -381,107 +293,81 @@ for (g in levels(metrics$group)) {
   if (nrow(d) < 3) next
   tt <- t.test(d$RT_post, d$RT_mid, paired = TRUE, alternative = "greater")
   cd <- cohens_d(d$RT_post, d$RT_mid, paired = TRUE, alternative = "greater")
+  wt <- wilcox.test(d$RT_post, d$RT_mid, paired = TRUE, alternative = "greater")
   rt_tests[[g]] <- data.frame(
-    Group = case_when(g == "item_only" ~ "Item Only",
-                      g == "task_only" ~ "Task Only", TRUE ~ "Both"),
-    `Mean Diff (s)` = round(mean(d$RT_post - d$RT_mid, na.rm = TRUE), 3),
+    Hypothesis = "H3: Speed Bump",
+    Group = case_when(g == "item_only" ~ "Item Only", g == "task_only" ~ "Task Only", TRUE ~ "Both"),
+    Metric = "RT (post-mid)",
+    `Mean Diff` = round(mean(d$RT_post - d$RT_mid, na.rm = TRUE), 3),
     t = round(tt$statistic, 3), df = tt$parameter,
-    `p (raw)` = round(tt$p.value, 5),
+    `p (raw)` = tt$p.value,
     `Cohen d` = round(cd$Cohens_d, 3),
-    check.names = FALSE
-  )
+    `Wilcoxon p` = wt$p.value,
+    check.names = FALSE)
 }
-rt_res <- bind_rows(rt_tests)
-rt_res$`p (Bonf.)` <- round(p.adjust(rt_res$`p (raw)`, "bonferroni"), 5)
-rt_res$`p (BH)` <- round(p.adjust(rt_res$`p (raw)`, "BH"), 5)
 
-kable(rt_res, caption = "Speed Bump: Paired $t$-tests for retrieval RT (post $-$ mid).",
-      booktabs = TRUE, align = "lcccccc", row.names = FALSE)
+# --- Combine and apply corrections ---
+all_res <- bind_rows(c(rec_tests, ldi_tests, rt_tests))
+all_res$`p (Bonf.)` <- round(p.adjust(all_res$`p (raw)`, "bonferroni"), 5)
+all_res$`p (BH)`    <- round(p.adjust(all_res$`p (raw)`, "BH"), 5)
+all_res$`p (raw)`   <- round(all_res$`p (raw)`, 5)
+all_res$`Wilcoxon p` <- round(all_res$`Wilcoxon p`, 5)
+
+kable(all_res[, c("Hypothesis","Group","Mean Diff","t","df","p (raw)","Cohen d","p (Bonf.)","p (BH)")],
+      caption = "Combined inferential results for all three hypotheses with multiple comparison corrections.",
+      booktabs = TRUE, align = "llccccccc", row.names = FALSE)
 ```
 
-No group showed significantly slower retrieval RT for post-boundary items relative to mid-event items (all $p > .45$, all $d < 0.13$). The mean differences were small and inconsistent in direction. Possible explanations include the inherent noise in RT distributions, cancellation of opposing response tendencies (faster guessing vs. slower deliberation for weakly remembered items), and the possibility that the speed bump operates during encoding rather than retrieval, as suggested by Morse et al. (2023).
+**Hypothesis 1 — Blind Spot (supported in the Both group).** Recognition memory was significantly lower for post-boundary items than mid-event items in the Both Item & Task group ($t(50) = -4.12$, raw $p < .001$, $d = -0.58$), a medium-sized 12-percentage-point impairment that **survived both Bonferroni and BH corrections**. The Item Only and Task Only groups showed nominally significant trends in the same direction (raw $p = .034$ and $.039$), but these did not survive correction. Wilcoxon tests corroborated all parametric results.
 
-> **Hypothesis 3 Verdict:** **Not supported in any group.** We fail to reject the null hypothesis — post-boundary items are not retrieved more slowly.
+**Hypothesis 2 — Snapshot (not supported).** No group showed a significant difference in LDI between pre-boundary and mid-event positions (all $p > .30$, all $|d| < 0.15$). Pre-boundary items did not exhibit enhanced lure discrimination, likely because boundaries were unpredictable and LDI estimates relied on relatively few lure trials per position per participant (9–11 trials).
 
-### Summary of Multiple Comparison Corrections
+**Hypothesis 3 — Speed Bump (not supported).** No group showed significantly slower retrieval RT for post-boundary items (all $p > .45$, all $|d| < 0.13$). This null result may reflect RT noise, cancellation of competing response tendencies, or the possibility that the speed bump operates during encoding rather than retrieval (Morse et al., 2023).
 
-```{r master-summary}
-all_p <- c(rec_res$`p (raw)`, ldi_res$`p (raw)`, rt_res$`p (raw)`)
-summary_df <- data.frame(
-  `Significance Level` = c("Raw (α = 0.05)", "Bonferroni-corrected", "BH FDR-corrected"),
-  `Tests Significant` = c(sum(all_p < 0.05),
-                           sum(p.adjust(all_p, "bonferroni") < 0.05),
-                           sum(p.adjust(all_p, "BH") < 0.05)),
-  `Out of Total` = rep(length(all_p), 3),
-  check.names = FALSE
-)
-kable(summary_df, caption = "Summary of significant tests across correction methods.",
-      booktabs = TRUE, align = "lcc")
-```
-
-Of the nine inferential tests conducted, only one — the Blind Spot effect in the Both Item & Task group — survives both Bonferroni and BH corrections.
-
-## Additional Findings
-
-```{r pre-vs-post}
-pre_post_tests <- list()
+```{r pre-vs-post-inline, include=FALSE}
+pp <- list()
 for (g in levels(metrics$group)) {
   d <- rec_wide %>% filter(group == g)
   tt <- t.test(d$REC_pre, d$REC_post, paired = TRUE)
   cd <- cohens_d(d$REC_pre, d$REC_post, paired = TRUE)
-  pre_post_tests[[g]] <- data.frame(
-    Group = case_when(g == "item_only" ~ "Item Only",
-                      g == "task_only" ~ "Task Only", TRUE ~ "Both"),
+  pp[[g]] <- data.frame(
+    Group = case_when(g == "item_only" ~ "Item Only", g == "task_only" ~ "Task Only", TRUE ~ "Both"),
     `Mean Diff` = round(mean(d$REC_pre - d$REC_post), 3),
     t = round(tt$statistic, 3), df = tt$parameter,
-    `p (raw)` = round(tt$p.value, 5),
-    `Cohen d` = round(cd$Cohens_d, 3),
-    check.names = FALSE
-  )
+    p = round(tt$p.value, 5), d = round(cd$Cohens_d, 3),
+    check.names = FALSE)
 }
-pp_res <- bind_rows(pre_post_tests)
-
-kable(pp_res, caption = "Pre- vs. post-boundary REC. Positive Mean Diff indicates pre $>$ post.",
-      booktabs = TRUE, align = "lccccc", row.names = FALSE)
+pp_res <- bind_rows(pp)
 ```
 
-**Recognition gradient.** Direct pre-boundary vs. post-boundary comparisons (Table 8) reveal that pre-boundary items are recognised significantly better than post-boundary items in the Both group ($p = .0003$, $d = 0.55$) and the Task Only group ($p = .009$, $d = 0.37$), establishing a clear ordering: **pre-boundary > mid-event > post-boundary**. This gradient becomes more pronounced with increasing task complexity, supporting the interpretation that cognitively demanding encoding conditions amplify boundary effects.
+**Additional finding — recognition gradient.** Direct pre- vs. post-boundary comparisons revealed that pre-boundary items are recognised significantly better than post-boundary items in the Both group ($p = .0003$, $d = 0.55$) and the Task Only group ($p = .009$, $d = 0.37$), establishing a clear ordering: **pre > mid > post**. This gradient becomes more pronounced with increasing task complexity, supporting the interpretation that cognitively demanding encoding amplifies boundary effects.
 
-**Response bias.** The Task Only group exhibited an elevated "Similar" response rate (~37.6% vs. ~31–33% in other groups), which may partly account for their lower REC scores — if participants are biased toward responding "Similar" rather than "Old," they will miss more targets.
+# Conclusion and Future Directions
 
-**Lure bin decline by position.** When lure discrimination was broken down by both similarity bin and boundary position, post-boundary items showed reduced $P(\text{``Similar''} \mid \text{Lure})$ across all five bins, not only the most similar ones. This suggests that post-boundary memory impairment reflects a **general weakening** of the encoded trace rather than a selective loss of fine-grained perceptual detail.
+This report examined event boundary effects on memory across three MST groups differing in encoding complexity. The central finding is strong support for the **Blind Spot hypothesis** in the Both Item & Task group: post-boundary items were recognised ~12 percentage points less accurately than mid-event items ($d = -0.58$, surviving stringent correction). The single-task groups exhibited the same trend but lacked power for corrected significance, suggesting the Blind Spot is a genuine phenomenon amplified under cognitive load. Neither the **Snapshot** nor the **Speed Bump** hypothesis was supported. The absence of a Snapshot effect likely reflects the unpredictability of boundaries — without anticipation of the transition, the brain may not engage proactive stabilisation. The null Speed Bump may reflect RT noise or the possibility that slowing occurs at encoding rather than retrieval (Morse et al., 2023). These findings align with Event Segmentation Theory (Zacks et al., 2007): boundary-triggered context updating temporarily diverts encoding resources, and this disruption is magnified under cognitive load.
 
-\newpage
-
-# Conclusion and Future Work
-
-This report examined the effects of event boundaries on memory in the MST across three experimental groups differing in encoding task complexity. The central finding is strong support for the **Blind Spot hypothesis** in the Both Item & Task group: post-boundary items were recognised approximately 12 percentage points less accurately than mid-event items, a medium-sized effect ($d = -0.58$) that survived stringent multiple-comparison corrections. The Item Only and Task Only groups exhibited the same directional trend but lacked sufficient statistical power to reach corrected significance, suggesting that the Blind Spot is a genuine phenomenon amplified under high cognitive load.
-
-Neither the **Snapshot hypothesis** nor the **Speed Bump hypothesis** was supported. The absence of a Snapshot effect likely reflects the unpredictability of event boundaries in this paradigm: without anticipation of an upcoming transition, the brain may not engage the proactive stabilisation mechanism that would enhance pre-boundary memory representations. The absence of a Speed Bump at retrieval may reflect high noise in RT data, cancellation of competing response tendencies, or the possibility that the speed bump operates during encoding rather than retrieval (Morse et al., 2023).
-
-From a theoretical standpoint, these findings are consistent with Event Segmentation Theory (Zacks et al., 2007): event boundaries trigger an updating of the brain's internal context model, and this updating process temporarily diverts resources away from encoding the first post-boundary item. The modulation by task complexity provides evidence that encoding fragility interacts with boundary processing demands — when the system is under greater cognitive load, boundary-related disruption is magnified.
-
-Several avenues remain for future investigation. Report 2 will employ more powerful statistical methods, including **repeated-measures ANOVA** to jointly model group and position effects, **mixed-effects logistic regression** at the trial level to increase power beyond participant-level aggregates, and **generalised linear models** (GLMs) that can incorporate trial-level covariates such as lure bin, stimulus type, and reaction time. Larger sample sizes would improve the detection of the smaller effects observed in the single-task groups, and a design incorporating predictable boundaries could provide a more powerful test of the Snapshot hypothesis.
+**Report 2** will employ more powerful methods: **repeated-measures ANOVA** to jointly model group $\times$ position interactions, **mixed-effects logistic regression** at the trial level for increased power, and **generalised linear models** incorporating trial-level covariates (lure bin, stimulus type, RT). A predictable-boundary design would provide a stronger test of the Snapshot hypothesis.
 
 # References
 
+\begingroup
 \setlength{\parindent}{-0.5in}
 \setlength{\leftskip}{0.5in}
 \setlength{\parskip}{6pt}
 \noindent
 
-DuBrow, S., & Davachi, L. (2014). Temporal memory is shaped by encoding stability and intervening item reactivation. *Journal of Neuroscience*, *34*(42), 13998–14005.
+DuBrow, S., & Davachi, L. (2014). Temporal memory is shaped by encoding stability and intervening item reactivation. *Journal of Neuroscience*, *34*(42), 13998–14005. \url{https://doi.org/10.1523/JNEUROSCI.2816-14.2014}
 
-Heusser, A. C., Ezzyat, Y., Shiff, I., & Davachi, L. (2018). Perceptual boundaries cause mnemonic trade-offs between local boundary processing and across-trial associative binding. *Journal of Experimental Psychology: Learning, Memory, and Cognition*, *44*(7), 1075–1090.
+Heusser, A. C., Ezzyat, Y., Shiff, I., & Davachi, L. (2018). Perceptual boundaries cause mnemonic trade-offs between local boundary processing and across-trial associative binding. *Journal of Experimental Psychology: Learning, Memory, and Cognition*, *44*(7), 1075–1090. \url{https://doi.org/10.1037/xlm0000488}
 
-Morse, S. J., Duff, M. C., Abel, T. J., & Johnson, E. L. (2023). Event boundaries influence mnemonic discrimination in the mnemonic similarity task. *Learning & Memory*, *30*(11), 279–284.
+Morse, S. J., Duff, M. C., Abel, T. J., & Johnson, E. L. (2023). Event boundaries influence mnemonic discrimination in the mnemonic similarity task. *Learning & Memory*, *30*(11), 279–284. \url{https://doi.org/10.1101/lm.053876.123}
 
-Revelle, W. (2023). *psych: Procedures for Psychological, Psychometric, and Personality Research*. R package version 2.4.1.
+Stark, S. M., Kirwan, C. B., & Stark, C. E. L. (2019). Mnemonic similarity task: A tool for assessing hippocampal integrity. *Trends in Cognitive Sciences*, *23*(11), 938–951. \url{https://doi.org/10.1016/j.tics.2019.08.003}
 
-Stark, S. M., Kirwan, C. B., & Stark, C. E. L. (2019). Mnemonic similarity task: A tool for assessing hippocampal integrity. *Trends in Cognitive Sciences*, *23*(11), 938–951.
+Stark, S. M., Yassa, M. A., Lacy, J. W., & Stark, C. E. L. (2013). A task to assess behavioral pattern separation (BPS) in humans. *Neuropsychologia*, *51*(12), 2442–2449. \url{https://doi.org/10.1016/j.neuropsychologia.2012.12.014}
 
-Stark, S. M., Yassa, M. A., Lacy, J. W., & Stark, C. E. L. (2013). A task to assess behavioral pattern separation (BPS) in humans. *Neuropsychologia*, *51*(12), 2442–2449.
+Swallow, K. M., Zacks, J. M., & Abrams, R. A. (2009). Event boundaries in perception affect memory encoding and updating. *Journal of Experimental Psychology: General*, *138*(2), 236–257. \url{https://doi.org/10.1037/a0015631}
 
-Swallow, K. M., Zacks, J. M., & Abrams, R. A. (2009). Event boundaries in perception affect memory encoding and updating. *Journal of Experimental Psychology: General*, *138*(2), 236–257.
+Zacks, J. M., Speer, N. K., Swallow, K. M., Braver, T. S., & Reynolds, J. R. (2007). Event perception: A mind–brain perspective. *Psychological Bulletin*, *133*(2), 273–293. \url{https://doi.org/10.1037/0033-2909.133.2.273}
 
-Zacks, J. M., Speer, N. K., Swallow, K. M., Braver, T. S., & Reynolds, J. R. (2007). Event perception: A mind–brain perspective. *Psychological Bulletin*, *133*(2), 273–293.
+\endgroup
