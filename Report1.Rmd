@@ -346,7 +346,33 @@ pp_res <- bind_rows(pp)
 
 This report examined event boundary effects on memory across three MST groups differing in encoding complexity. The central finding is strong support for the **Blind Spot hypothesis** in the Both Item & Task group: post-boundary items were recognised ~12 percentage points less accurately than mid-event items ($d = -0.58$, surviving stringent correction). The single-task groups exhibited the same trend but lacked power for corrected significance, suggesting the Blind Spot is a genuine phenomenon amplified under cognitive load. Neither the **Snapshot** nor the **Speed Bump** hypothesis was supported. The absence of a Snapshot effect likely reflects the unpredictability of boundaries — without anticipation of the transition, the brain may not engage proactive stabilisation. The null Speed Bump may reflect RT noise or the possibility that slowing occurs at encoding rather than retrieval (Morse et al., 2023). These findings align with Event Segmentation Theory (Zacks et al., 2007): boundary-triggered context updating temporarily diverts encoding resources, and this disruption is magnified under cognitive load.
 
-**Report 2** will employ more powerful methods: **repeated-measures ANOVA** to jointly model group $\times$ position interactions, **mixed-effects logistic regression** at the trial level for increased power, and **generalised linear models** incorporating trial-level covariates (lure bin, stimulus type, RT). A predictable-boundary design would provide a stronger test of the Snapshot hypothesis.
+**Report 2: Future Directions and Advanced Analysis.** Report 2 will be an update of this initial report, moving from simple paired comparisons to advanced modeling that examines how different factors work together to influence memory. This next stage will include:
+
+1. **Interaction Analysis (Two-way Repeated-Measures ANOVA):** In Report 1, we looked at groups separately. In Report 2, we will use ANOVA to formally test if the "memory drop" at boundaries is significantly more severe when encoding tasks are more complex. This helps us understand if a "busy brain" is more vulnerable to losing information during scene changes.
+
+2. **Trial-Level Modeling (Mixed-Effects Logistic Regression):** Instead of using participant averages, we will analyze individual trials (every single image seen). This is a more powerful method that accounts for both individual differences in participants and the relative difficulty of specific images.
+
+3. **Predictive Analysis (Generalized Linear Models - GLM):** We will investigate how factors like retrieval speed (Reaction Time) and how similar a fake image was to the real one (Lure Similarity) directly predict whether a participant remembers correctly.
+
+**Hypotheses for Report 2:** *H4 (Task Interaction):* We expect the group doing the most complex task (Both Item & Task) to show a significantly steeper decline in memory at event boundaries compared to the simpler groups. *H5 (Similarity Gradient):* We predict that as the "Lure Bin" becomes more similar to the original image, participants will be significantly more likely to make errors (as predicted by our regression models). *H6 (Boundary Influence):* We expect our trial-level models to show that being at a "post-boundary" position is a significant predictor of memory error, even when controlling for how hard the specific image was.
+
+# Code Repository
+
+The complete analysis code and reproducible pipeline used to generate the results and figures in this report is available at: \url{https://github.com/Anurag-1205/MST_Simpletons}
+
+# Author Contributions
+
+The behavioral experiment itself was conducted as part of the course experiment pool. Our group participated in the experiment and performed statistical analysis on the dataset provided by the course instructors.
+
+Work was divided among the team members based on the three hypotheses tested in the study.
+
+**Srushti Pekamwar — Hypothesis H1 (Blind Spot Effect).** Analysis of recognition memory differences between post-boundary and mid-event items. Implementation of statistical tests and visualizations related to REC. Interpretation and documentation of the Blind Spot effect results.
+
+**Anurag Kaushal — Hypothesis H2 (Snapshot Effect).** Analysis of lure discrimination differences between pre-boundary and mid-event items. Implementation of statistical tests and visualizations related to LDI. Interpretation and documentation of the Snapshot effect results.
+
+**Param Modi — Hypothesis H3 (Speed Bump Effect).** Analysis of retrieval reaction time differences between post-boundary and mid-event items. Implementation of statistical tests and visualizations related to reaction time. Interpretation and documentation of the Speed Bump effect results.
+
+All members collaboratively reviewed the statistical results and finalized the report.
 
 # References
 
