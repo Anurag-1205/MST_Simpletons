@@ -1,0 +1,436 @@
+---
+title: "Event Boundaries and Memory in the Mnemonic Similarity Task"
+subtitle: "BRSM 2026 — Report 2: Advanced Inferential Analysis"
+author: "Team Simpletons: Srushti Pekamwar, Param Modi, Anurag Kaushal"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    toc: false
+    number_sections: true
+    fig_caption: true
+    latex_engine: xelatex
+    keep_tex: true
+fontsize: 12pt
+linestretch: 1
+geometry: margin=1in
+header-includes:
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+  - \usepackage{booktabs}
+  - \usepackage{caption}
+  - \captionsetup{font=small}
+  - \usepackage{setspace}
+  - \singlespacing
+  - \usepackage{enumitem}
+  - \setlist{nosep, leftmargin=*}
+  - \usepackage{hyperref}
+  - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE, error = FALSE,
+  fig.align = "center", fig.pos = "H", fig.path = "figures_v4/", dev = c("png", "pdf"),
+  out.width = "90%", dpi = 300
+)
+
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(psych)
+  library(effectsize)
+  library(car)
+  library(knitr)
+  library(gridExtra)
+  library(lme4)
+  library(lmerTest)
+  library(ez)
+  library(ggplot2)
+  library(pheatmap)
+  library(viridis)
+  library(broom)
+  library(broom.mixed)
+})
+
+# Load Data
+DATA <- file.path(normalizePath(".."), "extracted_data")
+retrieval <- read_csv(file.path(DATA, "retrieval_trials.csv"), show_col_types = FALSE)
+metrics   <- read_csv(file.path(DATA, "participant_metrics.csv"), show_col_types = FALSE)
+lure_bins <- read_csv(file.path(DATA, "lure_bin_metrics.csv"), show_col_types = FALSE)
+
+# Formatting Factors
+metrics$boundary_position <- factor(metrics$boundary_position, levels = c("pre","mid","post"))
+metrics$group <- factor(metrics$group, levels = c("item_only","task_only","Both_item_task"))
+
+retrieval$boundary_position <- factor(retrieval$boundary_position, levels = c("pre","mid","post","none"))
+retrieval$group <- factor(retrieval$group, levels = c("item_only","task_only","Both_item_task"))
+retrieval$stimulus_type <- factor(retrieval$stimulus_type)
+retrieval$participant <- factor(retrieval$participant)
+
+# Load and Process Encoding Data
+encoding <- read_csv(file.path(DATA, "encoding_trials.csv"), show_col_types = FALSE) %>%
+  mutate(position = (trial_n %% 7) + 1) %>%
+  mutate(boundary_pos = case_when(
+    position == 1 ~ "post",
+    position == 4 ~ "mid",
+    position == 7 ~ "pre",
+    TRUE ~ "other"
+  )) %>%
+  filter(boundary_pos != "other") %>%
+  mutate(boundary_pos = factor(boundary_pos, levels = c("pre", "mid", "post")))
+
+# Compute Trial-Level Binary Accuracy
+retrieval <- retrieval %>%
+  mutate(
+    accuracy = case_when(
+      stimulus_type == "Target" & response == "o" ~ 1,
+      stimulus_type == "Foil" & response == "n" ~ 1,
+      stimulus_type == "Lure" & response == "s" ~ 1,
+      TRUE ~ 0
+    )
+  )
+
+test_targets <- retrieval %>% filter(stimulus_type == "Target")
+
+# Setup Theme
+theme_report <- theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+        plot.subtitle = element_text(hjust = 0.5, colour = "grey40", size = 12),
+        legend.position = "bottom",
+        strip.text = element_text(face = "bold", size = 12),
+        plot.margin = margin(10, 10, 10, 10))
+
+clr <- c("Both_item_task"="#1b9e77","item_only"="#d95f02","task_only"="#7570b3")
+lbl <- c("Both","Item Only","Task Only")
+
+lure_bins$group <- factor(lure_bins$group, levels = c("item_only","task_only","Both_item_task"))
+lure_bins$lure_bin <- as.numeric(lure_bins$lure_bin)
+```
+
+# Introduction and Background
+
+Human experience is not a continuous stream. Instead, the brain automatically segments ongoing perceptual representations into discrete events to optimize structural encoding and situational awareness. An event boundary occurs whenever the perceptual or situational context changes—such as moving between rooms, experiencing a temporal shift, or witnessing a scene change in a visual narrative (Zacks, Speer, Swallow, Braver, & Reynolds, 2007). Event Segmentation Theory (EST) posits that these event boundaries trigger a cognitive update in working memory, briefly impairing the encoding fidelity of incoming stimuli immediately post-boundary (Swallow, Zacks, & Abrams, 2009).
+
+## Summary of Initial Findings and Current Study Objectives
+
+In Report 1, we explored how event boundaries modulate memory encoding across three distinct groups differing in cognitive coding complexity (Item Only, Task Only, and Both Item and Task). The initial report established the presence of a boundary-induced disruption in memory encoding. 
+
+Report 2 advances this investigation by employing mixed-effects statistical models to formally quantify these effects while accounting for individual variability. We test four core hypotheses examining: (1) whether recognition accuracy is disrupted after event boundaries, (2) how cognitive load influences this disruption, (3) whether perceptual similarity drives memory errors, and (4) whether encoding reaction time increases at boundaries.
+
+---
+
+# Methods
+
+## Experimental Design
+
+The study included 160 participants (final analysis $n = 159$) assigned to three task conditions:
+
+- **Item Only Group** ($n = 56$): Participants judged whether objects belonged indoors or outdoors
+- **Task Only Group** ($n = 53$): Participants assessed whether objects fit inside a shoebox  
+- **Both Item and Task Group** ($n = 50$): Participants performed both judgments simultaneously
+
+The stimulus stream comprised 280 images organized into 40 blocks of 7 items each. Event boundaries were marked by contextual scene changes and task shifts between blocks. Three boundary-relative positions were examined: **Pre** (Position 7, last item before boundary), **Mid** (Position 4, stable event interior), and **Post** (Position 1, first item after boundary).
+
+During retrieval, participants completed a recognition test with 150 trials: 50 targets (previously studied images), 50 lures (perceptually similar but novel images from 5 similarity bins), and 50 foils (unrelated images).
+
+## Key Outcome Measures
+
+- **REC (Recognition Memory):** $P(\text{Old}|\text{Target}) - P(\text{Old}|\text{Foil})$
+- **LDI (Lure Discrimination Index):** $P(\text{Similar}|\text{Lure}) - P(\text{Similar}|\text{Foil})$
+- **Reaction Time (RT):** Response latency during encoding, measured in seconds
+- **Trial-Level Accuracy:** Binary success/failure on individual trials
+
+## Statistical Analysis Approach
+
+Four hypothesis-driven models were employed:
+
+- **H1 — Boundary Disruption (LMM + Type III ANOVA):** Linear Mixed-Effects Model with boundary position as fixed effect and participant random intercept, tested with Type III ANOVA and planned contrasts
+- **H2 — Cognitive Load (3×3 Mixed ANOVA):** Two-way mixed ANOVA with task group (between) and boundary position (within) as factors
+- **H3 — Doppelgänger Effect (GLMM):** Generalized Linear Mixed Model with logistic link examining lure similarity (continuous) and task group effects on accuracy
+- **H4 — Encoding Update Cost (LMM):** Linear Mixed-Effects Model examining RT as a function of boundary position with participant random intercept
+
+---
+
+# Data Integration and Validation Diagnostics 
+
+Prior to examining the main hypotheses, fundamental validation checks were performed to ensure data quality and stability. Figure \ref{fig:validations} illustrates key structural benchmarks.
+
+```{r fig_validations, fig.height=6, fig.width=9, fig.cap="\\label{fig:validations} Benchmark distributions validating data quality. Left: Violin plots of Recognition Memory (REC) across task groups. Right: Line plots showing lure discrimination performance by similarity bin."}
+
+p1 <- ggplot(metrics, aes(x = group, y = REC, fill = group)) +
+  geom_violin(alpha = 0.5, width=0.8, color="black", linetype="solid") +
+  geom_boxplot(width = 0.15, fill="white", outlier.shape = 21, color="black") +
+  scale_fill_manual(values = clr, labels = lbl) +
+  scale_x_discrete(labels = lbl) +
+  theme_report + theme(legend.position = "none") +
+  labs(x = "Task Group", y = "REC", title="Recognition Memory by Group")
+
+lure_bin_summary <- lure_bins %>%
+  group_by(group, lure_bin) %>%
+  summarise(mean_p = mean(p_similar, na.rm=TRUE), se_p = sd(p_similar, na.rm=TRUE)/sqrt(n()), .groups="drop")
+
+p2 <- ggplot(lure_bin_summary, aes(x = factor(lure_bin), y = mean_p, colour = group, group = group)) +
+  geom_line(linewidth = 1.2) + geom_point(size = 3) +
+  geom_errorbar(aes(ymin = mean_p - se_p, ymax = mean_p + se_p), width = 0.15) +
+  scale_colour_manual(values = clr, labels = lbl) +
+  theme_report + theme(legend.position = "none") +
+  labs(x = "Lure Bin (1=Most Similar)", y = "P(Similar)", title="Lure Discrimination by Similarity")
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+Data inputs display uniform, statistically healthy trajectories. Recognition Memory (REC) scores are well-distributed across task groups. Lure discrimination demonstrates the expected linear relationship with similarity, validating the reliability of the experiment.
+
+---
+
+# Results
+
+## H1: Boundary Disruption Effect
+
+**Hypothesis:** Recognition accuracy remains stable within an event (Pre ≈ Mid) but drops sharply after an event boundary (Post).
+
+```{r h1_analysis}
+# Linear Mixed-Effects Model for H1
+h1_model <- lmer(REC ~ boundary_position + (1|participant), data = metrics)
+h1_anova <- anova(h1_model, type = 3)
+
+# Post-hoc planned contrasts
+h1_contrasts <- contrast(emmeans(h1_model, ~boundary_position), 
+                         method = list(
+                           "Pre vs Mid" = c(1, -1, 0),
+                           "Pre vs Post" = c(1, 0, -1),
+                           "Mid vs Post" = c(0, 1, -1)
+                         ), 
+                         adjust = "none")
+
+h1_tbl <- as.data.frame(h1_anova) %>%
+  mutate(across(where(is.numeric), ~round(., 3))) %>%
+  mutate(p_val = format.pval(`Pr(>F)`, eps = 0.001))
+
+knitr::kable(
+  h1_tbl %>% select(1, `F value`, NumDF, DenDF, p_val),
+  col.names = c("Effect", "F", "df num", "df den", "p-value"),
+  caption = "H1: Type III ANOVA — Main Effect of Boundary Position on REC",
+  booktabs = TRUE
+)
+```
+
+**Result: SUPPORTED**
+
+The mixed-effects analysis revealed a significant main effect of boundary position ($F(2, 318) = 16.13$, $p < 0.001$). Planned contrasts demonstrated:
+
+- **Mid vs Post:** $t = -4.93$, $p < 0.001$ — Mid-event accuracy significantly exceeds post-boundary accuracy
+- **Pre vs Post:** $t = -3.79$, $p < 0.001$ — Pre-boundary accuracy significantly exceeds post-boundary accuracy  
+- **Pre vs Mid:** $t = 0.62$, $p = 0.535$ — Pre-boundary and mid-event accuracy do not reliably differ
+
+This pattern confirms the hypothesis: memory is stable within an event but shows a sharp disruption immediately following a boundary.
+
+```{r fig_h1_boundary, fig.height=5, fig.width=7, fig.cap="H1 Result: Recognition accuracy by boundary position. Error bars represent ±1 SE."}
+h1_means <- metrics %>%
+  group_by(boundary_position) %>%
+  summarise(mean_rec = mean(REC, na.rm=TRUE), 
+            se = sd(REC, na.rm=TRUE)/sqrt(n()), 
+            .groups = "drop")
+
+ggplot(h1_means, aes(x = boundary_position, y = mean_rec)) +
+  geom_col(fill = "#2c3e50", alpha = 0.7, width = 0.6) +
+  geom_errorbar(aes(ymin = mean_rec - se, ymax = mean_rec + se), width = 0.15, size = 1) +
+  scale_y_continuous(limits = c(0, 0.75), labels = scales::percent_format(accuracy = 1)) +
+  labs(x = "Boundary Position", y = "Mean Recognition Accuracy (REC)",
+       title = "H1: Boundary Disruption Effect") +
+  theme_report + theme(legend.position = "none")
+```
+
+---
+
+## H2: Cognitive Load Effect
+
+**Hypothesis:** Higher cognitive load reduces recognition accuracy. Additionally, the magnitude of boundary-related decline is similar across all cognitive load levels.
+
+```{r h2_analysis}
+# 3x3 Mixed-Effects ANOVA via lmer
+h2_model <- lmer(REC ~ boundary_position * group + (1|participant), data = metrics)
+h2_anova  <- anova(h2_model, type = 3)
+
+h2_tbl <- as.data.frame(h2_anova) %>%
+  mutate(across(where(is.numeric), ~round(., 3))) %>%
+  mutate(p_val = format.pval(`Pr(>F)`, eps = 0.001))
+
+knitr::kable(
+  h2_tbl %>% select(1, `F value`, NumDF, DenDF, p_val),
+  col.names = c("Effect", "F", "df num", "df den", "p-value"),
+  caption = "H2: Type III Mixed ANOVA — Task Group and Boundary Position Effects",
+  booktabs = TRUE
+)
+```
+
+**Result: SUPPORTED**
+
+- **Task Group main effect:** $F(2, 157) = 4.43$, $p = 0.013$ — Cognitive load significantly influences recognition accuracy
+- **Boundary Position main effect:** $F(2, 314) = 16.29$, $p < 0.001$ — Boundary position significantly affects accuracy
+- **Interaction (Group × Position):** $F(4, 314) = 1.88$, $p = 0.117$ — The boundary effect does not significantly interact with cognitive load
+
+The interaction is not significant, indicating that **the magnitude of boundary-related decline is comparable across all task groups**, even though overall accuracy differs based on cognitive load.
+
+```{r fig_h2_interaction, fig.height=5, fig.width=7, fig.cap="H2 Result: Cognitive Load × Boundary Position interaction. Higher load reduces overall accuracy, but the boundary disruption pattern is similar across groups."}
+h2_means <- metrics %>%
+  group_by(group, boundary_position) %>%
+  summarise(mean_rec = mean(REC, na.rm=TRUE), 
+            se = sd(REC, na.rm=TRUE)/sqrt(n()), 
+            .groups = "drop")
+
+ggplot(h2_means, aes(x = boundary_position, y = mean_rec, color = group, group = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3.5) +
+  geom_errorbar(aes(ymin = mean_rec - se, ymax = mean_rec + se), width = 0.1) +
+  scale_color_manual(values = clr, labels = lbl) +
+  scale_y_continuous(limits = c(0.55, 0.75), labels = scales::percent_format(accuracy = 1)) +
+  labs(x = "Boundary Position", y = "Mean Recognition Accuracy (REC)", color = "Task Group",
+       title = "H2: Cognitive Load × Boundary Position Interaction") +
+  theme_report
+```
+
+---
+
+## H3: Doppelgänger Effect
+
+**Hypothesis:** Highly similar lure items are more difficult to distinguish from targets than less similar lures, yielding a linear accuracy gradient across similarity bins.
+
+```{r h3_glmm}
+# GLMM for lure similarity effect
+lure_data <- retrieval %>% filter(stimulus_type == "Lure")
+h3_model <- glmer(response == "s" ~ lure_bin * group + (1|participant), 
+                  data = lure_data, family = binomial)
+
+h3_summary <- tidy(h3_model, effects = "fixed") %>%
+  mutate(across(where(is.numeric), ~round(., 3))) %>%
+  mutate(p_val = format.pval(p.value, eps = 0.001))
+
+knitr::kable(
+  h3_summary %>% select(term, estimate, std.error, statistic, p_val),
+  col.names = c("Term", "Estimate (β)", "SE", "z-value", "p-value"),
+  caption = "H3: GLMM Results — Fixed Effects of Lure Similarity on Discrimination Accuracy",
+  booktabs = TRUE
+)
+```
+
+**Result: SUPPORTED**
+
+The GLMM revealed a highly significant main effect of lure similarity:
+
+- **Lure Bin Effect:** $\beta = 0.196$, $p < 0.001$ — As lure similarity decreases (Bin 1 → Bin 5), the probability of correctly identifying the lure as "Similar" increases substantially
+- **Task Group Effects:** No main effects of task group or interactions with lure similarity ($p > 0.05$) — The lure similarity gradient is consistent across all cognitive load conditions
+
+This confirms that **perceptual morphology directly drives memory discrimination**, independent of task demands.
+
+```{r fig_h3_lure, fig.height=5, fig.width=7, fig.cap="H3 Result: Lure discrimination by similarity bin. Less similar lures (higher bin numbers) are identified more accurately across all groups."}
+h3_plot_data <- lure_bins %>%
+  group_by(group, lure_bin) %>%
+  summarise(mean_p = mean(p_similar, na.rm=TRUE), 
+            se = sd(p_similar, na.rm=TRUE)/sqrt(n()), 
+            .groups = "drop")
+
+ggplot(h3_plot_data, aes(x = factor(lure_bin), y = mean_p, color = group, group = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3.5) +
+  geom_errorbar(aes(ymin = mean_p - se, ymax = mean_p + se), width = 0.1) +
+  scale_color_manual(values = clr, labels = lbl) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(x = "Lure Similarity Bin (1 = Most Similar)", y = "P(Correct 'Similar' Response)",
+       color = "Task Group", title = "H3: Doppelgänger Effect — Lure Similarity Gradient") +
+  theme_report
+```
+
+---
+
+## H4: Encoding Update Cost
+
+**Hypothesis:** Reaction time increases immediately following an event boundary, reflecting the cognitive cost of updating the event model.
+
+```{r h4_encoding_rt}
+# LMM for encoding RT
+h4_model <- lmer(combined_rt ~ boundary_pos + (1|participant), data = encoding)
+
+# Planned contrasts for RT
+h4_contrasts <- contrast(emmeans(h4_model, ~boundary_pos), 
+                         method = list(
+                           "Pre vs Post" = c(1, 0, -1),
+                           "Mid vs Post" = c(0, 1, -1)
+                         ),
+                         adjust = "none")
+
+h4_anova <- anova(h4_model, type = 3)
+h4_tbl <- as.data.frame(h4_anova) %>%
+  mutate(across(where(is.numeric), ~round(., 3))) %>%
+  mutate(p_val = format.pval(`Pr(>F)`, eps = 0.001))
+
+knitr::kable(
+  h4_tbl %>% select(1, `F value`, NumDF, DenDF, p_val),
+  col.names = c("Effect", "F", "df num", "df den", "p-value"),
+  caption = "H4: Type III ANOVA — Main Effect of Boundary Position on Encoding RT",
+  booktabs = TRUE
+)
+```
+
+**Result: SUPPORTED**
+
+The analysis revealed a significant main effect of boundary position on encoding reaction time ($F(2, 12623) = 59.50$, $p < 0.001$). Planned contrasts demonstrated:
+
+- **Pre vs Post:** $t = -7.84$, $p < 0.001$ — Responses are significantly slower immediately after boundaries compared to before boundaries
+- **Mid vs Post:** $t = -7.31$, $p < 0.001$ — Responses are significantly slower at post-boundary positions compared to mid-event positions
+- **Mean RT increase at Post:** ~230ms slower at post-boundary compared to pre-boundary position
+
+This confirms that **navigating an event boundary structurally increases processing latency**, consistent with the cognitive cost of updating the active event representation.
+
+```{r fig_h4_encoding_rt, fig.height=5, fig.width=7, fig.cap="H4 Result: Encoding reaction time by boundary position. RT spikes immediately after boundaries, indicating processing cost of context updating."}
+h4_means <- encoding %>%
+  group_by(boundary_pos) %>%
+  summarise(mean_rt = mean(combined_rt, na.rm=TRUE), 
+            se = sd(combined_rt, na.rm=TRUE)/sqrt(n()), 
+            .groups = "drop")
+
+ggplot(h4_means, aes(x = boundary_pos, y = mean_rt)) +
+  geom_col(fill = "#c0392b", alpha = 0.7, width = 0.6) +
+  geom_errorbar(aes(ymin = mean_rt - se, ymax = mean_rt + se), width = 0.15, size = 1) +
+  labs(x = "Boundary Position", y = "Mean Encoding RT (seconds)",
+       title = "H4: Encoding Update Cost — RT by Boundary Position") +
+  theme_report + theme(legend.position = "none")
+```
+
+---
+
+# Summary of Findings
+
+All four hypotheses were supported:
+
+1. **H1 — Boundary Disruption Effect:** Recognition accuracy is disrupted specifically at post-boundary positions while remaining stable within events
+2. **H2 — Cognitive Load Effect:** Higher cognitive load reduces overall accuracy, but the boundary effect magnitude is consistent across task conditions
+3. **H3 — Doppelgänger Effect:** Perceptual lure similarity is the primary driver of discrimination errors, independent of task demands
+4. **H4 — Encoding Update Cost:** Encoding RT increases substantially at post-boundary positions, reflecting cognitive updating costs
+
+These findings provide strong evidence that event boundaries trigger transient disruptions in memory encoding and retrieval, with costs appearing both at the time of event transition (encoding RT) and during subsequent memory retrieval (recognition accuracy).
+
+---
+
+# Discussion
+
+Event Segmentation Theory posits that the brain automatically updates its representation of ongoing events at moments of contextual change. Our results provide quantitative evidence that this updating process is computationally costly: participants take longer to encode information immediately following boundaries, and this temporal disruption translates into measurably weaker memory for post-boundary items. Critically, these boundary-related effects occur independently of overall cognitive load, suggesting that event segmentation is a fundamental feature of how the brain processes continuous experience.
+
+The strong effect of perceptual lure similarity indicates that memory errors are driven primarily by stimulus properties rather than by event structure. However, the combination of boundary effects and similarity effects suggests that memory performance reflects multiple independent constraints: items that are perceptually similar suffer reduced discrimination regardless of when they appear, while items appearing after boundaries suffer recognition deficits regardless of their perceptual properties.
+
+These findings advance our understanding of how the brain segments experience into events and how this segmentation influences the fidelity of memory encoding. Future work should investigate whether the boundary effect can be mitigated through attentional interventions or whether it represents a fundamental architectural constraint on human memory.
+
+---
+
+# References
+
+Morse, S. J., Karagoz, A. B., & Reagh, Z. M. (2023). Event boundaries influence item-level recognition memory. *Journal of Neuroscience*, 43(15), 2710-2720.
+
+Stark, S. M., Kirwan, C. B., & Stark, C. E. L. (2019). Mnemonic similarity task: A tool for assessing hippocampal integrity. *Trends in Cognitive Sciences*, 23(11), 938–951.
+
+Swallow, K. M., Zacks, J. M., & Abrams, R. A. (2009). Event boundaries in perception affect memory encoding and updating. *Journal of Experimental Psychology: General*, 138(2), 236–257.
+
+Yassa, M. A., & Stark, C. E. L. (2011). Pattern separation in the hippocampus. *Trends in Cognitive Sciences*, 15(9), 428–435.
+
+Zacks, J. M., Speer, N. K., Swallow, K. M., Braver, T. S., & Reynolds, J. R. (2007). Event perception: A mind–brain perspective. *Psychological Bulletin*, 133(2), 273–293.
+
+---
